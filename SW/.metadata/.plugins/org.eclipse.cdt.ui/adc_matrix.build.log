@@ -1,0 +1,10 @@
+13:47:09 **** Incremental Build of configuration Debug for project adc_matrix ****
+make -j4 all 
+arm-none-eabi-size   adc_matrix.elf 
+   text	   data	    bss	    dec	    hex	filename
+  17796	    120	   2328	  20244	   4f14	adc_matrix.elf
+Finished building: default.size.stdout
+ 
+
+13:47:10 Build Finished. 0 errors, 0 warnings. (took 796ms)
+
