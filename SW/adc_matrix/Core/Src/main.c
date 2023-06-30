@@ -31,9 +31,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define SCOLUMNS 5
-#define SROWS 5
+#define SCOLUMNS 4
+#define SROWS 4
 #define MAXBUFFER 256
+#define ADC_SET_TIME 1
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -50,12 +51,7 @@ UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
-GPIO_TypeDef* ntc_row_port[]={R0_GPIO_Port,R1_GPIO_Port,R2_GPIO_Port,R3_GPIO_Port,R4_GPIO_Port};
-uint16_t ntc_row_pin[]={R0_Pin,R1_Pin,R2_Pin,R3_Pin,R4_Pin};
-GPIO_TypeDef* ntc_col_port[]={COL0_GPIO_Port,COL1_GPIO_Port,COL2_GPIO_Port,COL3_GPIO_Port,COL4_GPIO_Port};
-uint16_t ntc_col_pin[]={COL0_Pin,COL1_Pin,COL2_Pin,COL3_Pin,COL4_Pin};
 
-uint32_t adc_chanels[SCOLUMNS]={ADC_CHANNEL_0,ADC_CHANNEL_1,ADC_CHANNEL_2,ADC_CHANNEL_3,ADC_CHANNEL_4};
 uint16_t raw_temp[SROWS*SCOLUMNS];
 char tx_buffer[MAXBUFFER];
 /* USER CODE END PV */
@@ -76,7 +72,7 @@ static void MX_USART3_UART_Init(void);
 void select_adc_channel(int channel)
 {
     ADC_ChannelConfTypeDef sConfig = {0};
-    sConfig.SamplingTime = ADC_SAMPLETIME_19CYCLES_5;
+//////////    sConfig.SamplingTime = ADC_SAMPLETIME_19CYCLES_5;
     switch (channel)
     {
         case 0:
@@ -96,8 +92,8 @@ void select_adc_channel(int channel)
               break;
         default: sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
     }
-    sConfig.Rank = 1;
-
+    sConfig.Rank = ADC_REGULAR_RANK_1;
+    sConfig.SamplingTime = ADC_SAMPLINGTIME_COMMON_1;
     if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
     {
       Error_Handler();
@@ -110,45 +106,48 @@ void select_adc_channel(int channel)
 void convert (int column,int row)
 {
 
-//	select_adc_channel(column);
+	select_adc_channel(column);
+	HAL_GPIO_WritePin(PB4_GPIO_Port, PB4_Pin, GPIO_PIN_SET);
 	HAL_ADC_Start(&hadc1);
 	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
 	raw_temp[column+SCOLUMNS*row] = HAL_ADC_GetValue(&hadc1);
-//	HAL_ADC_Stop(&hadc1);
+	HAL_GPIO_WritePin(PB4_GPIO_Port, PB4_Pin, GPIO_PIN_RESET);
+	HAL_ADC_Stop(&hadc1);
 }
 
 void scan_columns(int row)
 	{
+
 		HAL_GPIO_WritePin(COL0_GPIO_Port,COL0_Pin, GPIO_PIN_SET);
-		HAL_Delay(5);
+		HAL_Delay(ADC_SET_TIME);
 		convert(0,row);
 		HAL_GPIO_WritePin(COL0_GPIO_Port,COL0_Pin, GPIO_PIN_RESET);
 		HAL_Delay(1);
 
 		HAL_GPIO_WritePin(COL1_GPIO_Port,COL1_Pin, GPIO_PIN_SET);
-		HAL_Delay(5);
+		HAL_Delay(ADC_SET_TIME);
 		convert(1,row);
 		HAL_GPIO_WritePin(COL1_GPIO_Port,COL1_Pin, GPIO_PIN_RESET);
 		HAL_Delay(1);
 
 		HAL_GPIO_WritePin(COL2_GPIO_Port,COL2_Pin, GPIO_PIN_SET);
-		HAL_Delay(5);
+		HAL_Delay(ADC_SET_TIME);
 		convert(2,row);
 		HAL_GPIO_WritePin(COL2_GPIO_Port,COL2_Pin, GPIO_PIN_RESET);
 		HAL_Delay(1);
 
 		HAL_GPIO_WritePin(COL3_GPIO_Port,COL3_Pin, GPIO_PIN_SET);
-		HAL_Delay(5);
+		HAL_Delay(ADC_SET_TIME);
 		convert(3,row);
 		HAL_GPIO_WritePin(COL3_GPIO_Port,COL3_Pin, GPIO_PIN_RESET);
 		HAL_Delay(1);
-
+/*
 		HAL_GPIO_WritePin(COL4_GPIO_Port,COL4_Pin, GPIO_PIN_SET);
 		HAL_Delay(5);
 		convert(4,row);
 		HAL_GPIO_WritePin(COL4_GPIO_Port,COL4_Pin, GPIO_PIN_RESET);
 		HAL_Delay(1);
-
+*/
 	}
 
 
@@ -161,7 +160,7 @@ void scan_rows()
 			HAL_GPIO_WritePin(R1_GPIO_Port,R1_Pin, GPIO_PIN_RESET);
 			scan_columns(1);
 			HAL_GPIO_WritePin(R1_GPIO_Port,R1_Pin, GPIO_PIN_SET);
-/*
+
 			HAL_GPIO_WritePin(R2_GPIO_Port,R2_Pin, GPIO_PIN_RESET);
 			scan_columns(2);
 			HAL_GPIO_WritePin(R2_GPIO_Port,R2_Pin, GPIO_PIN_SET);
@@ -169,7 +168,7 @@ void scan_rows()
 			HAL_GPIO_WritePin(R3_GPIO_Port,R3_Pin, GPIO_PIN_RESET);
 			scan_columns(3);
 			HAL_GPIO_WritePin(R3_GPIO_Port,R3_Pin, GPIO_PIN_SET);
-
+/*
 			HAL_GPIO_WritePin(R4_GPIO_Port,R4_Pin, GPIO_PIN_RESET);
 			scan_columns(4);
 			HAL_GPIO_WritePin(R4_GPIO_Port,R4_Pin, GPIO_PIN_SET);
@@ -226,8 +225,9 @@ int buf_size;
   while (1)
   {
 	read_all_sensors();
-	buf_size = sprintf (tx_buffer, "ADC %04d %04d %04d %04d %04d %04d %04d %04d %04d %04d \r\n", raw_temp[0],raw_temp[1],raw_temp[2],raw_temp[3],raw_temp[4],raw_temp[5],raw_temp[6],raw_temp[7],raw_temp[8],raw_temp[9]);
-	HAL_UART_Transmit (&huart1, (uint8_t *)tx_buffer, buf_size, 10);
+	HAL_ADC_Stop(&hadc1);
+	buf_size = sprintf (tx_buffer, "ADC %04d %04d %04d %04d %04d %04d %04d %04d %04d %04d %04d %04d %04d %04d %04d %04d \r\n", raw_temp[0],raw_temp[1],raw_temp[2],raw_temp[3],raw_temp[4],raw_temp[5],raw_temp[6],raw_temp[7],raw_temp[8],raw_temp[9],raw_temp[10],raw_temp[11],raw_temp[12],raw_temp[13],raw_temp[14],raw_temp[15]);
+	HAL_UART_Transmit (&huart3, (uint8_t *)tx_buffer, buf_size, 10);
 	HAL_Delay(50);
     /* USER CODE END WHILE */
 
@@ -310,7 +310,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.LowPowerAutoWait = DISABLE;
   hadc1.Init.LowPowerAutoPowerOff = DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
-  hadc1.Init.NbrOfConversion = 5;
+  hadc1.Init.NbrOfConversion = 4;
   hadc1.Init.DiscontinuousConvMode = ENABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
@@ -357,15 +357,6 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_3;
   sConfig.Rank = ADC_REGULAR_RANK_4;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Configure Regular Channel
-  */
-  sConfig.Channel = ADC_CHANNEL_4;
-  sConfig.Rank = ADC_REGULAR_RANK_5;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
