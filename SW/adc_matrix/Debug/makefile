@@ -60,8 +60,8 @@ all: main-build
 main-build: adc_matrix.elf secondary-outputs
 
 # Tool invocations
-adc_matrix.elf adc_matrix.map: $(OBJS) $(USER_OBJS) /home/tjp/TJP_PRV/adc_matrix/SW/adc_matrix/STM32G070CBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "adc_matrix.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m0plus -T"/home/tjp/TJP_PRV/adc_matrix/SW/adc_matrix/STM32G070CBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="adc_matrix.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+adc_matrix.elf adc_matrix.map: $(OBJS) $(USER_OBJS) C:\Users\Almos\Documents\adc_matrix\SW\adc_matrix\STM32G070CBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "adc_matrix.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m0plus -T"C:\Users\Almos\Documents\adc_matrix\SW\adc_matrix\STM32G070CBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="adc_matrix.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

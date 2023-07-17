@@ -22,6 +22,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include "crc.h"
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -37,6 +39,11 @@
 #define ADC_SET_TIME 1
 #define RX_BUFFER_SIZE 256
 #define KSMOOTH 10
+
+#define NUM_RAW_DATA		((SCOLUMNS) * (SROWS))
+#define NUM_TO_COMBINE		(2)
+#define NUM_TEMPERATURES	(NUM_RAW_DATA / NUM_TO_COMBINE)
+#define TEMP_OFFSET 		(31)
 
 /* USER CODE END PD */
 
@@ -55,13 +62,19 @@ UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
 
-uint16_t raw_temp[SROWS*SCOLUMNS];
-uint16_t adc_smoothed[SROWS*SCOLUMNS];
-uint16_t smooth_raw[KSMOOTH][SROWS*SCOLUMNS];
+uint16_t raw_adc_data[NUM_RAW_DATA];
+uint16_t adc_smoothed[NUM_RAW_DATA];
+uint16_t smooth_raw[KSMOOTH][NUM_RAW_DATA];
 uint16_t adc_serial=0;
+
+int16_t temps_measured[NUM_RAW_DATA];
+uint8_t temps_to_send[NUM_TEMPERATURES];
+
 char tx_buffer[MAXBUFFER];
 int rx_available;
 char rx_buffer[RX_BUFFER_SIZE];
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -72,6 +85,11 @@ static void MX_CRC_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
+
+void prepareTemp(int16_t measured, uint8_t* pdata);	// fn to turn 16 bit measured data to 8 bit prepared-to-send data
+void fillTemp();
+void doMeasurements();
+void sendData();
 
 /* USER CODE END PFP */
 
@@ -118,7 +136,7 @@ void convert (int column,int row)
 	HAL_GPIO_WritePin(PB4_GPIO_Port, PB4_Pin, GPIO_PIN_SET);
 	HAL_ADC_Start(&hadc1);
 	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-	raw_temp[column+SCOLUMNS*row] = HAL_ADC_GetValue(&hadc1);
+	raw_adc_data[column+SCOLUMNS*row] = HAL_ADC_GetValue(&hadc1);
 	HAL_GPIO_WritePin(PB4_GPIO_Port, PB4_Pin, GPIO_PIN_RESET);
 	HAL_ADC_Stop(&hadc1);
 }
@@ -197,11 +215,11 @@ void read_smooth()
 	for(int k=0;k<KSMOOTH;k++)
 	{
 		read_all_sensors();
-		for(int m=0;m<SROWS*SCOLUMNS;m++) smooth_raw[k][m]=raw_temp[m];
+		for(int m=0;m<NUM_RAW_DATA;m++) smooth_raw[k][m]=raw_adc_data[m];
 
 	}
 	adc_serial++;
-	for(int n=0;n<SROWS*SCOLUMNS;n++)
+	for(int n=0;n<NUM_RAW_DATA;n++)
 	{
 		for(int p=1;p<KSMOOTH;p++)
 		{
@@ -231,7 +249,6 @@ void eval_comm(char comm)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-int buf_size;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -257,8 +274,6 @@ int buf_size;
   MX_USART1_UART_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-	buf_size = sprintf (tx_buffer, "ADC matrix NTC probe \r\nBuilt on  %s at %s \r\n",__DATE__, __TIME__);
-	HAL_UART_Transmit (&huart3, (uint8_t *)tx_buffer, buf_size, 10);
 
   /* USER CODE END 2 */
 
@@ -266,15 +281,21 @@ int buf_size;
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-//	read_all_sensors();
-	  read_smooth();
-	HAL_ADC_Stop(&hadc1);
-//	buf_size = sprintf (tx_buffer, "%04d,%04d,%04d,%04d,%04d,%04d,%04d,%04d,%04d,%04d,%04d,%04d,%04d,%04d,%04d,%04d\r\n", raw_temp[0],raw_temp[1],raw_temp[2],raw_temp[3],raw_temp[4],raw_temp[5],raw_temp[6],raw_temp[7],raw_temp[8],raw_temp[9],raw_temp[10],raw_temp[11],raw_temp[12],raw_temp[13],raw_temp[14],raw_temp[15]);
-	buf_size = sprintf (tx_buffer, "%04d\r\n", adc_smoothed[0]);
-//	while (HAL_GPIO_ReadPin(START_GPIO_Port, START_Pin));
-	HAL_UART_Transmit (&huart3, (uint8_t *)tx_buffer, buf_size, 10);
-	HAL_Delay(200);
-//	while (!HAL_GPIO_ReadPin(START_GPIO_Port, START_Pin));
+	// wait for rising edge
+	while (HAL_GPIO_ReadPin(START_GPIO_Port, START_Pin));
+
+	doMeasurements();
+
+	// fill temperatures buffer
+	fillTemp();
+
+	// send
+	sendData();
+
+	// wait for falling edge
+	while (!HAL_GPIO_ReadPin(START_GPIO_Port, START_Pin));
+
+
 /*	if(HAL_UART_Receive(&huart3,(uint8_t *)rx_buffer, 1, 1)!= HAL_OK)
 		{
 		__HAL_UART_CLEAR_PEFLAG(&huart3);
@@ -625,6 +646,63 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+/*
+ *
+ *
+ * own function definitions
+ *
+ *
+ */
+
+int16_t min(int16_t a, int16_t b){
+	if (a > b) return b;
+	return a;
+}
+
+int16_t max(int16_t a, int16_t b){
+	if (a > b) return a;
+	return b;
+}
+
+void prepareTemp(int16_t measured, uint8_t* pPrepared){
+	*pPrepared = min(max((measured + TEMP_OFFSET), 1), 254);
+}
+
+void fillTemp(){
+	int mltp = (NUM_RAW_DATA / NUM_TEMPERATURES);
+	int base = NUM_RAW_DATA / mltp;
+	for (int i = 0; i < base; i++){
+		int16_t value = 0;
+		for (int j = 0; j < mltp; j++){
+			value += temps_measured[i * mltp + j];
+		}
+		value /= mltp;
+		prepareTemp(value, &temps_to_send[i]);
+	}
+}
+
+void sendData(){
+	uint8_t packet_len = NUM_TEMPERATURES + 2;
+	uint8_t packet[packet_len];
+	memcpy(packet, temps_to_send, NUM_TEMPERATURES);
+	uint16_t crc = calculateCRC16(temps_to_send, NUM_TEMPERATURES);
+	packet[packet_len - 2] = crc >> 8;
+	packet[packet_len - 1] = crc & 0xFF;
+	HAL_UART_Transmit (&huart3, packet, packet_len, 10);
+}
+
+void doMeasurements(){
+	//	read_all_sensors();
+
+	//read_smooth();
+	//HAL_ADC_Stop(&hadc1);
+
+	// the goal is to fill temps_measured array with smoothed 16bit signeed temperature data
+	// for testing purposes
+	for (int i = 0; i < NUM_RAW_DATA; i++){
+		temps_measured[i] = i;
+	}
+}
 /* USER CODE END 4 */
 
 /**
