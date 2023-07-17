@@ -1,0 +1,11 @@
+/.metadata
+/**/*.d
+/**/*.o
+/**/*.su
+/**/*.bin
+/**/*.elf
+/**/*.map
+/**/*.list
+!/**/objects.list
+/**/*.cyclo
+/**/.settings
