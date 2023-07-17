@@ -6,8 +6,9 @@
 		<item key="wholeword" value="false"/>
 		<item key="incremental" value="false"/>
 		<item key="isRegEx" value="false"/>
-		<item key="selection" value="select_adc"/>
+		<item key="selection" value="HAL_UART"/>
 		<list key="findhistory">
+			<item value="HAL_UART"/>
 			<item value="select_adc"/>
 			<item value="select"/>
 		</list>

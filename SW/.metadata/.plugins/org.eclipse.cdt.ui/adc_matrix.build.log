@@ -1,4 +1,4 @@
-00:08:56 **** Incremental Build of configuration Debug for project adc_matrix ****
+11:58:43 **** Incremental Build of configuration Debug for project adc_matrix ****
 make -j4 all 
 arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m0plus -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32G070xx -c -I../Core/Inc -I../Drivers/STM32G0xx_HAL_Driver/Inc -I../Drivers/STM32G0xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32G0xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/main.o"
 arm-none-eabi-gcc -o "adc_matrix.elf" @"objects.list"   -mcpu=cortex-m0plus -T"/home/tjp/TJP_PRV/adc_matrix/SW/adc_matrix/STM32G070CBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="adc_matrix.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
@@ -7,11 +7,11 @@ Finished building target: adc_matrix.elf
 arm-none-eabi-size   adc_matrix.elf 
 arm-none-eabi-objdump -h -S  adc_matrix.elf  > "adc_matrix.list"
    text	   data	    bss	    dec	    hex	filename
-  18648	    120	   2312	  21080	   5258	adc_matrix.elf
+  20620	    120	   2664	  23404	   5b6c	adc_matrix.elf
 Finished building: default.size.stdout
  
 Finished building: adc_matrix.list
  
 
-00:08:57 Build Finished. 0 errors, 0 warnings. (took 1s.202ms)
+11:58:44 Build Finished. 0 errors, 0 warnings. (took 1s.228ms)
 

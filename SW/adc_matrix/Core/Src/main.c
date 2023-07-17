@@ -35,6 +35,9 @@
 #define SROWS 4
 #define MAXBUFFER 256
 #define ADC_SET_TIME 1
+#define RX_BUFFER_SIZE 256
+#define KSMOOTH 10
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -53,7 +56,12 @@ UART_HandleTypeDef huart3;
 /* USER CODE BEGIN PV */
 
 uint16_t raw_temp[SROWS*SCOLUMNS];
+uint16_t adc_smoothed[SROWS*SCOLUMNS];
+uint16_t smooth_raw[KSMOOTH][SROWS*SCOLUMNS];
+uint16_t adc_serial=0;
 char tx_buffer[MAXBUFFER];
+int rx_available;
+char rx_buffer[RX_BUFFER_SIZE];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -182,6 +190,38 @@ void read_all_sensors(void)
 	scan_rows();
 	HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, GPIO_PIN_RESET);
 }
+
+void read_smooth()
+{
+	int sum;
+	for(int k=0;k<KSMOOTH;k++)
+	{
+		read_all_sensors();
+		for(int m=0;m<SROWS*SCOLUMNS;m++) smooth_raw[k][m]=raw_temp[m];
+
+	}
+	adc_serial++;
+	for(int n=0;n<SROWS*SCOLUMNS;n++)
+	{
+		for(int p=1;p<KSMOOTH;p++)
+		{
+		sum+=smooth_raw[p][n];
+		}
+	adc_smoothed[n]=(int)((1.0*sum)/KSMOOTH);
+	}
+
+}
+
+void eval_comm(char comm)
+{
+	int s;
+	s = sprintf (tx_buffer, "Received %02X\r\n",comm);
+	HAL_UART_Transmit (&huart3, (uint8_t *)tx_buffer, s, 10);
+	switch(comm)
+	{
+
+	}
+}
 /* USER CODE END 0 */
 
 /**
@@ -217,6 +257,8 @@ int buf_size;
   MX_USART1_UART_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
+	buf_size = sprintf (tx_buffer, "ADC matrix NTC probe \r\nBuilt on  %s at %s \r\n",__DATE__, __TIME__);
+	HAL_UART_Transmit (&huart3, (uint8_t *)tx_buffer, buf_size, 10);
 
   /* USER CODE END 2 */
 
@@ -224,11 +266,24 @@ int buf_size;
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	read_all_sensors();
+//	read_all_sensors();
+	  read_smooth();
 	HAL_ADC_Stop(&hadc1);
-	buf_size = sprintf (tx_buffer, "ADC %04d %04d %04d %04d %04d %04d %04d %04d %04d %04d %04d %04d %04d %04d %04d %04d \r\n", raw_temp[0],raw_temp[1],raw_temp[2],raw_temp[3],raw_temp[4],raw_temp[5],raw_temp[6],raw_temp[7],raw_temp[8],raw_temp[9],raw_temp[10],raw_temp[11],raw_temp[12],raw_temp[13],raw_temp[14],raw_temp[15]);
+//	buf_size = sprintf (tx_buffer, "%04d,%04d,%04d,%04d,%04d,%04d,%04d,%04d,%04d,%04d,%04d,%04d,%04d,%04d,%04d,%04d\r\n", raw_temp[0],raw_temp[1],raw_temp[2],raw_temp[3],raw_temp[4],raw_temp[5],raw_temp[6],raw_temp[7],raw_temp[8],raw_temp[9],raw_temp[10],raw_temp[11],raw_temp[12],raw_temp[13],raw_temp[14],raw_temp[15]);
+	buf_size = sprintf (tx_buffer, "%04d\r\n", adc_smoothed[0]);
+//	while (HAL_GPIO_ReadPin(START_GPIO_Port, START_Pin));
 	HAL_UART_Transmit (&huart3, (uint8_t *)tx_buffer, buf_size, 10);
-	HAL_Delay(50);
+	HAL_Delay(200);
+//	while (!HAL_GPIO_ReadPin(START_GPIO_Port, START_Pin));
+/*	if(HAL_UART_Receive(&huart3,(uint8_t *)rx_buffer, 1, 1)!= HAL_OK)
+		{
+		__HAL_UART_CLEAR_PEFLAG(&huart3);
+		__HAL_UART_CLEAR_NEFLAG(&huart3);
+		__HAL_UART_CLEAR_OREFLAG(&huart3);
+
+		}
+	 else eval_comm(rx_buffer[0]);
+*/
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -477,7 +532,7 @@ static void MX_USART3_UART_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN USART3_Init 2 */
-
+  __HAL_UART_ENABLE_IT(&huart3, UART_IT_RXNE);
   /* USER CODE END USART3_Init 2 */
 
 }
