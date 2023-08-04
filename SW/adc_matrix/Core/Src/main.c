@@ -41,7 +41,7 @@
 #define KSMOOTH 10
 
 #define NUM_RAW_DATA		((SCOLUMNS) * (SROWS))
-#define NUM_TO_COMBINE		(2)
+#define NUM_TO_COMBINE		(1)
 #define NUM_TEMPERATURES	(NUM_RAW_DATA / NUM_TO_COMBINE)
 #define TEMP_OFFSET 		(31)
 
@@ -65,6 +65,7 @@ UART_HandleTypeDef huart3;
 uint16_t raw_adc_data[NUM_RAW_DATA];
 uint16_t adc_smoothed[NUM_RAW_DATA];
 uint16_t smooth_raw[KSMOOTH][NUM_RAW_DATA];
+uint8_t adc_cal[NUM_RAW_DATA*2];
 uint16_t adc_serial=0;
 
 int16_t temps_measured[NUM_RAW_DATA];
@@ -88,6 +89,7 @@ static void MX_USART3_UART_Init(void);
 
 void prepareTemp(int16_t measured, uint8_t* pdata);	// fn to turn 16 bit measured data to 8 bit prepared-to-send data
 void fillTemp();
+void fillTempCal();
 void doMeasurements();
 void sendData();
 
@@ -284,14 +286,23 @@ int main(void)
 	// wait for rising edge
 	while (HAL_GPIO_ReadPin(START_GPIO_Port, START_Pin));
 
-	doMeasurements();
+	//doMeasurements();
+	read_all_sensors();
 
+	for (int i = 0; i < NUM_RAW_DATA; i++){
+
+	    adc_cal[i*2] = raw_adc_data[i] >> 8;
+
+	    adc_cal[i*2 + 1] = raw_adc_data[i] & 0xFF;
+
+	}
+	//memcpy(adc_cal,raw_adc_data,NUM_RAW_DATA*2);
 	// fill temperatures buffer
-	fillTemp();
+	//fillTemp();
 
 	// send
-	sendData();
-
+	//sendData();
+	sendDataCal();
 	// wait for falling edge
 	while (!HAL_GPIO_ReadPin(START_GPIO_Port, START_Pin));
 
@@ -686,6 +697,16 @@ void sendData(){
 	uint8_t packet[packet_len];
 	memcpy(packet, temps_to_send, NUM_TEMPERATURES);
 	uint16_t crc = calculateCRC16(temps_to_send, NUM_TEMPERATURES);
+	packet[packet_len - 2] = crc >> 8;
+	packet[packet_len - 1] = crc & 0xFF;
+	HAL_UART_Transmit (&huart3, packet, packet_len, 10);
+}
+
+void sendDataCal(){
+	uint8_t packet_len = NUM_TEMPERATURES*2 + 2;
+	uint8_t packet[packet_len];
+	memcpy(packet, adc_cal, NUM_TEMPERATURES*2);
+	uint16_t crc = calculateCRC16(temps_to_send, NUM_TEMPERATURES*2);
 	packet[packet_len - 2] = crc >> 8;
 	packet[packet_len - 1] = crc & 0xFF;
 	HAL_UART_Transmit (&huart3, packet, packet_len, 10);
