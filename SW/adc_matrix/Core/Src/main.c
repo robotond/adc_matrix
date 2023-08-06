@@ -150,7 +150,7 @@ void convert (int column,int row)
 	if (measured_temp < 0)					measured_temp = 0;
 	if (measured_temp > CAL_MAX_TEMP_KEY)	measured_temp = CAL_MAX_TEMP_KEY;
 	// get correct temperature
-	calculated_temperatures[sensor_num] = sensor_correct_values[sensor_num];
+	calculated_temperatures[sensor_num] = sensor_correct_values[sensor_num][measured_temp];
 
 	HAL_GPIO_WritePin(PB4_GPIO_Port, PB4_Pin, GPIO_PIN_RESET);
 	HAL_ADC_Stop(&hadc1);
