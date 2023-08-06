@@ -25,6 +25,7 @@
 #include "crc.h"
 #include <string.h>
 #include "tempcalc.h"
+#include "calib/probe_xx.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -136,13 +137,21 @@ void select_adc_channel(int channel)
 
 void convert (int column,int row)
 {
-
+	int sensor_num = column + SCOLUMNS * row;
 	select_adc_channel(column);
 	HAL_GPIO_WritePin(PB4_GPIO_Port, PB4_Pin, GPIO_PIN_SET);
 	HAL_ADC_Start(&hadc1);
 	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-	raw_adc_data[column+SCOLUMNS*row] = HAL_ADC_GetValue(&hadc1);
-	calculated_temperatures[column+SCOLUMNS*row]=get_temperature_data(raw_adc_data[column+SCOLUMNS*row] );
+	raw_adc_data[sensor_num] = HAL_ADC_GetValue(&hadc1);
+	//calculated_temperatures[sensor_num]=get_temperature_data(raw_adc_data[sensor_num] );
+	int16_t measured_temp = get_temperature_data(raw_adc_data[sensor_num] );
+
+	// limit measured temp to avoid wrong pointer
+	if (measured_temp < 0)					measured_temp = 0;
+	if (measured_temp > CAL_MAX_TEMP_KEY)	measured_temp = CAL_MAX_TEMP_KEY;
+	// get correct temperature
+	calculated_temperatures[sensor_num] = sensor_correct_values[sensor_num];
+
 	HAL_GPIO_WritePin(PB4_GPIO_Port, PB4_Pin, GPIO_PIN_RESET);
 	HAL_ADC_Stop(&hadc1);
 }
