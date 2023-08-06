@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include "crc.h"
 #include <string.h>
+#include "tempcalc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
