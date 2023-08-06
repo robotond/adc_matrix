@@ -92,6 +92,7 @@ void fillTemp();
 void fillTempCal();
 void doMeasurements();
 void sendData();
+void sendDataCal();
 
 /* USER CODE END PFP */
 
@@ -695,7 +696,10 @@ void fillTemp(){
 void sendData(){
 	uint8_t packet_len = NUM_TEMPERATURES + 2;
 	uint8_t packet[packet_len];
-	memcpy(packet, temps_to_send, NUM_TEMPERATURES);
+	for (int i = 0; i < NUM_TEMPERATURES; i++){
+	    packet[i * 2] = temps_to_send[i] >> 8;
+	    packet[i * 2 + 1] = temps_to_send[i] & 0xFF;
+	}
 	uint16_t crc = calculateCRC16(temps_to_send, NUM_TEMPERATURES);
 	packet[packet_len - 2] = crc >> 8;
 	packet[packet_len - 1] = crc & 0xFF;
@@ -705,8 +709,8 @@ void sendData(){
 void sendDataCal(){
 	uint8_t packet_len = NUM_TEMPERATURES*2 + 2;
 	uint8_t packet[packet_len];
-	memcpy(packet, adc_cal, NUM_TEMPERATURES*2);
-	uint16_t crc = calculateCRC16(temps_to_send, NUM_TEMPERATURES*2);
+	memcpy(packet,adc_cal,NUM_TEMPERATURES*2);
+	uint16_t crc = calculateCRC16(packet, NUM_TEMPERATURES*2);
 	packet[packet_len - 2] = crc >> 8;
 	packet[packet_len - 1] = crc & 0xFF;
 	HAL_UART_Transmit (&huart3, packet, packet_len, 10);
