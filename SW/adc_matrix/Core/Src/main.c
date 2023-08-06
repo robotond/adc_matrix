@@ -64,6 +64,7 @@ UART_HandleTypeDef huart3;
 /* USER CODE BEGIN PV */
 
 uint16_t raw_adc_data[NUM_RAW_DATA];
+int16_t calculated_temperatures[NUM_RAW_DATA];
 uint16_t adc_smoothed[NUM_RAW_DATA];
 uint16_t smooth_raw[KSMOOTH][NUM_RAW_DATA];
 uint8_t adc_cal[NUM_RAW_DATA*2];
@@ -141,6 +142,7 @@ void convert (int column,int row)
 	HAL_ADC_Start(&hadc1);
 	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
 	raw_adc_data[column+SCOLUMNS*row] = HAL_ADC_GetValue(&hadc1);
+	calculated_temperatures[column+SCOLUMNS*row]=get_temperature_data(raw_adc_data[column+SCOLUMNS*row] );
 	HAL_GPIO_WritePin(PB4_GPIO_Port, PB4_Pin, GPIO_PIN_RESET);
 	HAL_ADC_Stop(&hadc1);
 }
@@ -211,6 +213,7 @@ void read_all_sensors(void)
 	HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, GPIO_PIN_SET);
 	scan_rows();
 	HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, GPIO_PIN_RESET);
+
 }
 
 void read_smooth()
@@ -290,12 +293,19 @@ int main(void)
 
 	//doMeasurements();
 	read_all_sensors();
-
+/* ez mar mukodott
 	for (int i = 0; i < NUM_RAW_DATA; i++){
 
 	    adc_cal[i*2] = raw_adc_data[i] >> 8;
 
 	    adc_cal[i*2 + 1] = raw_adc_data[i] & 0xFF;
+
+	}*/
+	for (int i = 0; i < NUM_RAW_DATA; i++){
+
+	    adc_cal[i*2] = calculated_temperatures[i] >> 8;
+
+	    adc_cal[i*2 + 1] = calculated_temperatures[i] & 0xFF;
 
 	}
 	//memcpy(adc_cal,raw_adc_data,NUM_RAW_DATA*2);
