@@ -25,7 +25,6 @@
 #include "crc.h"
 #include <string.h>
 #include "tempcalc.h"
-#include "calib/probe_xx.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -35,6 +34,16 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+/////////////////////////////////////////////////////////////
+
+#warning "Should set PROBE_NUM to the number of actual uploaded probe!"
+#define PROBE_NUM	0 // 1 to 20
+#if PROBE_NUM == 0
+#warning "PROBE_NUM is 0, nominal NTC resistance will be 10K. Are you sure?"
+#endif
+/////////////////////////////////////////////////////////////
+
 #define SCOLUMNS 4
 #define SROWS 4
 #define MAXBUFFER 256
@@ -93,7 +102,6 @@ static void MX_USART3_UART_Init(void);
 void prepareTemp(int16_t measured, uint8_t* pdata);	// fn to turn 16 bit measured data to 8 bit prepared-to-send data
 void fillTemp();
 void fillTempCal();
-void doMeasurements();
 void sendData();
 void sendDataCal();
 
@@ -143,16 +151,21 @@ void convert (int column,int row)
 	HAL_ADC_Start(&hadc1);
 	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
 	raw_adc_data[sensor_num] = HAL_ADC_GetValue(&hadc1);
-	//calculated_temperatures[sensor_num]=get_temperature_data(raw_adc_data[sensor_num] );
-	int16_t measured_temp = get_temperature_data(raw_adc_data[sensor_num] );
-/*
+//1	calculated_temperatures[sensor_num] = get_temperature_data(raw_adc_data[sensor_num]);
+//3	int16_t measured_temp = get_temperature_data(raw_adc_data[sensor_num] );
+/*2
 	// limit measured temp to avoid wrong pointer
 	if (measured_temp < 0)					measured_temp = 0;
 	if (measured_temp > CAL_MAX_TEMP_KEY)	measured_temp = CAL_MAX_TEMP_KEY;
 	// get correct temperature
 	calculated_temperatures[sensor_num] = sensor_correct_values[sensor_num][measured_temp];
 */
-	calculated_temperatures[sensor_num] = measured_temp;
+//3	calculated_temperatures[sensor_num] = measured_temp;
+
+	// pass probe num and sensor num to get unique nominal resistance for NTC
+	// if PROBE_NUM is 0, default 10K will be used
+	calculated_temperatures[sensor_num] = get_temperature_data(raw_adc_data[sensor_num], PROBE_NUM, sensor_num);
+
 	HAL_GPIO_WritePin(PB4_GPIO_Port, PB4_Pin, GPIO_PIN_RESET);
 	HAL_ADC_Stop(&hadc1);
 }
@@ -223,7 +236,62 @@ void read_all_sensors(void)
 	HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, GPIO_PIN_SET);
 	scan_rows();
 	HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, GPIO_PIN_RESET);
+}
 
+void read_all_temperatures(){
+	static GPIO_TypeDef* row_gpio[SROWS] = {
+		R0_GPIO_Port, R1_GPIO_Port, R2_GPIO_Port, R3_GPIO_Port
+	};
+	static uint16_t row_pin[SROWS] = {
+			R0_Pin, R1_Pin, R2_Pin, R3_Pin
+	};
+
+	static GPIO_TypeDef* col_gpio[SCOLUMNS] = {
+			COL0_GPIO_Port, COL1_GPIO_Port, COL2_GPIO_Port, COL3_GPIO_Port
+	};
+
+	static uint16_t col_pin[SCOLUMNS] = {
+			COL0_Pin, COL1_Pin, COL2_Pin, COL3_Pin
+	};
+
+
+
+	// LED on
+	HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, GPIO_PIN_SET);
+
+	// scan rows
+	for (int row = 0; row < SROWS; row++){
+		HAL_GPIO_WritePin(row_gpio[row], row_pin[row], GPIO_PIN_RESET);
+		// scan columns
+		for (int col = 0; col < SCOLUMNS; col++){
+			HAL_GPIO_WritePin(col_gpio[row], col_pin[row], GPIO_PIN_SET);
+
+			int sensor_num = col + SCOLUMNS * row;
+			int n = 0;
+			uint32_t value = 0;
+
+			for (n = 0; n < 3; n++){
+				HAL_Delay(ADC_SET_TIME);
+				select_adc_channel(col);
+				HAL_GPIO_WritePin(PB4_GPIO_Port, PB4_Pin, GPIO_PIN_SET);
+				HAL_ADC_Start(&hadc1);
+				HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+				value += HAL_ADC_GetValue(&hadc1);
+				calculated_temperatures[sensor_num] = get_temperature_data(raw_adc_data[sensor_num], PROBE_NUM, sensor_num);
+				HAL_GPIO_WritePin(PB4_GPIO_Port, PB4_Pin, GPIO_PIN_RESET);
+				HAL_ADC_Stop(&hadc1);
+			}
+
+			raw_adc_data[sensor_num] = (uint16_t)round((double)value / n);
+			calculated_temperatures[sensor_num] = get_temperature_data(raw_adc_data[sensor_num], PROBE_NUM, sensor_num);
+
+			HAL_GPIO_WritePin(col_gpio[row], col_pin[row], GPIO_PIN_RESET);
+		}
+		HAL_GPIO_WritePin(row_gpio[row], row_pin[row], GPIO_PIN_SET);
+	}
+
+	// LED off
+	HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, GPIO_PIN_RESET);
 }
 
 void read_smooth()
@@ -301,7 +369,6 @@ int main(void)
 	// wait for rising edge
 	while (HAL_GPIO_ReadPin(START_GPIO_Port, START_Pin));
 
-	//doMeasurements();
 	read_all_sensors();
 /* ez mar mukodott
 	for (int i = 0; i < NUM_RAW_DATA; i++){
@@ -737,18 +804,6 @@ void sendDataCal(){
 	HAL_UART_Transmit (&huart3, packet, packet_len, 10);
 }
 
-void doMeasurements(){
-	//	read_all_sensors();
-
-	//read_smooth();
-	//HAL_ADC_Stop(&hadc1);
-
-	// the goal is to fill temps_measured array with smoothed 16bit signeed temperature data
-	// for testing purposes
-	for (int i = 0; i < NUM_RAW_DATA; i++){
-		temps_measured[i] = i;
-	}
-}
 /* USER CODE END 4 */
 
 /**
