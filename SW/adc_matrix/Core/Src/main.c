@@ -38,7 +38,7 @@
 /////////////////////////////////////////////////////////////
 
 #warning "Should set PROBE_NUM to the number of actual uploaded probe!"
-#define PROBE_NUM	0 // 1 to 20
+#define PROBE_NUM	20// 1 to 20
 #if PROBE_NUM == 0
 #warning "PROBE_NUM is 0, nominal NTC resistance will be 10K. Are you sure?"
 #endif
