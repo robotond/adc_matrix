@@ -648,7 +648,7 @@ static void MX_USART3_UART_Init(void)
   huart3.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
   huart3.Init.ClockPrescaler = UART_PRESCALER_DIV1;
   huart3.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_RS485Ex_Init(&huart3, UART_DE_POLARITY_HIGH, 0, 0) != HAL_OK)
+  if (HAL_UART_Init(&huart3) != HAL_OK)
   {
     Error_Handler();
   }
@@ -676,34 +676,11 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, BLUE_Pin|GREEN_Pin|RED_Pin|PC7_Pin
-                          |PC7C7_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(ENSPWR_GPIO_Port, ENSPWR_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(R0_GPIO_Port, R0_Pin, GPIO_PIN_SET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, R1_Pin|R2_Pin|R3_Pin|R4_Pin, GPIO_PIN_SET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, PB12_Pin|PB13_Pin|PB15_Pin|PB3_Pin
-                          |PB4_Pin|COL4_Pin|COL3_Pin|COL2_Pin
-                          |COL1_Pin|COL0_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, PA8_Pin|PA11_Pin|PA12_Pin|PA15_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, PD0_Pin|PD1_Pin|PD2_Pin|PD3_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pins : BLUE_Pin GREEN_Pin RED_Pin PC7_Pin
-                           PC7C7_Pin */
-  GPIO_InitStruct.Pin = BLUE_Pin|GREEN_Pin|RED_Pin|PC7_Pin
-                          |PC7C7_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+  HAL_GPIO_WritePin(GPIOB, RED_Pin|GREEN_Pin|BLUE1_Pin|BLUE2_Pin
+                          |BLUE3_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : START_Pin */
   GPIO_InitStruct.Pin = START_Pin;
@@ -711,34 +688,21 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(START_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : R0_Pin PA8_Pin PA11_Pin PA12_Pin
-                           PA15_Pin */
-  GPIO_InitStruct.Pin = R0_Pin|PA8_Pin|PA11_Pin|PA12_Pin
-                          |PA15_Pin;
+  /*Configure GPIO pin : ENSPWR_Pin */
+  GPIO_InitStruct.Pin = ENSPWR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(ENSPWR_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : R1_Pin R2_Pin R3_Pin R4_Pin
-                           PB12_Pin PB13_Pin PB15_Pin PB3_Pin
-                           PB4_Pin COL4_Pin COL3_Pin COL2_Pin
-                           COL1_Pin COL0_Pin */
-  GPIO_InitStruct.Pin = R1_Pin|R2_Pin|R3_Pin|R4_Pin
-                          |PB12_Pin|PB13_Pin|PB15_Pin|PB3_Pin
-                          |PB4_Pin|COL4_Pin|COL3_Pin|COL2_Pin
-                          |COL1_Pin|COL0_Pin;
+  /*Configure GPIO pins : RED_Pin GREEN_Pin BLUE1_Pin BLUE2_Pin
+                           BLUE3_Pin */
+  GPIO_InitStruct.Pin = RED_Pin|GREEN_Pin|BLUE1_Pin|BLUE2_Pin
+                          |BLUE3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PD0_Pin PD1_Pin PD2_Pin PD3_Pin */
-  GPIO_InitStruct.Pin = PD0_Pin|PD1_Pin|PD2_Pin|PD3_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
