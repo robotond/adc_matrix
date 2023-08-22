@@ -36,6 +36,7 @@
 /* USER CODE BEGIN PD */
 
 /////////////////////////////////////////////////////////////
+#define LIE_TEMPERATURE
 
 #warning "Should set PROBE_NUM to the number of actual uploaded probe!"
 #define PROBE_NUM	20// 1 to 20
@@ -164,7 +165,12 @@ void convert (int column,int row)
 
 	// pass probe num and sensor num to get unique nominal resistance for NTC
 	// if PROBE_NUM is 0, default 10K will be used
+#ifdef LIE_TEMPERATURE
+#warning "All sensors will be 0!"
+	calculated_temperatures[sensor_num] = 0;
+#else
 	calculated_temperatures[sensor_num] = get_temperature_data(raw_adc_data[sensor_num], PROBE_NUM, sensor_num);
+#endif
 
 	HAL_GPIO_WritePin(PB4_GPIO_Port, PB4_Pin, GPIO_PIN_RESET);
 	HAL_ADC_Stop(&hadc1);
