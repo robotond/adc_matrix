@@ -146,7 +146,7 @@ void select_adc_channel(int channel)
 
 void convert (int column,int row)
 {
-	int sensor_num = column + SCOLUMNS * row;
+	int16_t sensor_num = column + SCOLUMNS * row;
 	select_adc_channel(column);
 	HAL_GPIO_WritePin(PB4_GPIO_Port, PB4_Pin, GPIO_PIN_SET);
 	HAL_ADC_Start(&hadc1);
@@ -167,7 +167,7 @@ void convert (int column,int row)
 	// if PROBE_NUM is 0, default 10K will be used
 #ifdef LIE_TEMPERATURE
 #warning "All sensors will be 0!"
-	calculated_temperatures[sensor_num] = 0;
+	calculated_temperatures[sensor_num] = sensor_num;
 #else
 	calculated_temperatures[sensor_num] = get_temperature_data(raw_adc_data[sensor_num], PROBE_NUM, sensor_num);
 #endif
